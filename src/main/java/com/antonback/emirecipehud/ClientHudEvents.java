@@ -21,11 +21,22 @@ public class ClientHudEvents {
     public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
         event.registerBelowAll("emi_recipe_hud", (gui, guiGraphics, partialTick, width, height) -> {
             Minecraft mc = Minecraft.getInstance();
+
+            // Если дерева нет или цель не задана — выходим
             if (mc.player == null || mc.screen != null || BoM.tree == null || BoM.tree.goal == null) return;
 
             try {
                 EmiPlayerInventory playerInv = EmiPlayerInventory.of(mc.player);
+
+                // 1. Сначала считаем прогресс
                 BoM.tree.calculateProgress(playerInv);
+
+                // 2. ФИКС: Если цель выполнена (COMPLETED), мы "отвязываем" дерево в самом EMI.
+                // Это заставит HUD исчезнуть и не появляться снова, даже если вы выбросите предмет.
+                if (BoM.tree.goal.progress == ProgressState.COMPLETED) {
+                    BoM.tree = null;
+                    return;
+                }
 
                 Map<EmiStack, DisplayItem> displayMap = new LinkedHashMap<>();
                 collectFromTree(BoM.tree.goal, displayMap, playerInv, true);
@@ -38,7 +49,7 @@ public class ClientHudEvents {
                 }
 
                 List<DisplayItem> toRender = new ArrayList<>(displayMap.values());
-                if (toRender.isEmpty() || (toRender.size() == 1 && toRender.get(0).progress == ProgressState.COMPLETED)) return;
+                if (toRender.isEmpty()) return;
 
                 int maxCols = EmiRecipeHudConfig.COLUMNS.get();
                 int maxRows = EmiRecipeHudConfig.ROWS.get();
@@ -69,13 +80,13 @@ public class ClientHudEvents {
 
                     int color;
                     if (item.isGoal || item.progress == ProgressState.COMPLETED) {
-                        color = 0x915900; // Оранжевый
+                        color = 0x915900;
                     } else if (item.isIntermediate) {
-                        if (item.possibleBatches >= item.neededBatches && item.neededBatches > 0) color = 0x00918E; // Бирюзовый
-                        else if (item.possibleBatches > 0) color = 0x790091; // Фиолетовый
-                        else color = 0x915900; // Оранжевый
+                        if (item.possibleBatches >= item.neededBatches && item.neededBatches > 0) color = 0x00918E;
+                        else if (item.possibleBatches > 0) color = 0x790091;
+                        else color = 0x915900;
                     } else {
-                        color = 0x911300; // Красный
+                        color = 0x911300;
                     }
 
                     MicroTextRenderer.render(emiContext, item.amount, item.stack.getKey() instanceof Fluid, 17, curX + 17, curY + 18, color | 0xFF000000);
@@ -119,8 +130,8 @@ public class ClientHudEvents {
         for (MaterialNode c : n.children) {
             long h = 0;
             for (EmiStack s : c.ingredient.getEmiStacks()) {
-                EmiStack f = inv.inventory.get(s);
-                if (f != null) h += f.getAmount();
+                EmiStack found = inv.inventory.get(s);
+                if (found != null) h += found.getAmount();
             }
             if (c.amount > 0) p = Math.min(p, h / c.amount);
         }
