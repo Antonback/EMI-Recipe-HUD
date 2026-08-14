@@ -1,0 +1,11 @@
+{
+  "emi.config.emirecipehud.title": "EMI Recipe HUD",
+  "emi.config.emirecipehud.columns": "Columns",
+  "emi.config.emirecipehud.rows": "Rows",
+  "emi.config.emirecipehud.margin_left": "Margin Left",
+  "emi.config.emirecipehud.margin_top": "Margin Top",
+  "emi.config.emirecipehud.margin_right": "Margin Right",
+  "emi.config.emirecipehud.margin_bottom": "Margin Bottom",
+  "emi.config.emirecipehud.h_align": "Horizontal Alignment",
+  "emi.config.emirecipehud.v_align": "Vertical Alignment"
+}
