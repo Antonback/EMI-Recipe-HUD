@@ -21,7 +21,10 @@ public class ClientHudEvents {
     public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
         event.registerBelowAll("emi_recipe_hud", (gui, guiGraphics, partialTick, width, height) -> {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.player == null || mc.screen != null || BoM.tree == null || BoM.tree.goal == null) return;
+
+            if (mc.player == null || mc.screen != null || BoM.tree == null || BoM.tree.goal == null || !BoM.craftingMode) {
+                return;
+            }
 
             try {
                 EmiPlayerInventory playerInv = EmiPlayerInventory.of(mc.player);
@@ -29,6 +32,7 @@ public class ClientHudEvents {
 
                 if (BoM.tree.goal.progress == ProgressState.COMPLETED) {
                     BoM.tree = null;
+                    BoM.craftingMode = false; // Выключаем режим крафта при завершении
                     return;
                 }
 
@@ -73,15 +77,12 @@ public class ClientHudEvents {
                     emiContext.drawStack(item.stack, curX, curY);
 
                     int color;
-                    if (item.isGoal || item.progress == ProgressState.COMPLETED) {
-                        color = 0x915900;
-                    } else if (item.isIntermediate) {
+                    if (item.isGoal || item.progress == ProgressState.COMPLETED) color = 0x915900;
+                    else if (item.isIntermediate) {
                         if (item.possibleBatches >= item.neededBatches && item.neededBatches > 0) color = 0x00918E;
                         else if (item.possibleBatches > 0) color = 0x790091;
                         else color = 0x915900;
-                    } else {
-                        color = 0x911300;
-                    }
+                    } else color = 0x911300;
 
                     MicroTextRenderer.render(emiContext, item.amount, item.stack.getKey() instanceof Fluid, 17, curX + 17, curY + 18, color | 0xFF000000);
                     curX += 18; count++;
