@@ -21,18 +21,12 @@ public class ClientHudEvents {
     public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
         event.registerBelowAll("emi_recipe_hud", (gui, guiGraphics, partialTick, width, height) -> {
             Minecraft mc = Minecraft.getInstance();
-
-            // Если дерева нет или цель не задана — выходим
             if (mc.player == null || mc.screen != null || BoM.tree == null || BoM.tree.goal == null) return;
 
             try {
                 EmiPlayerInventory playerInv = EmiPlayerInventory.of(mc.player);
-
-                // 1. Сначала считаем прогресс
                 BoM.tree.calculateProgress(playerInv);
 
-                // 2. ФИКС: Если цель выполнена (COMPLETED), мы "отвязываем" дерево в самом EMI.
-                // Это заставит HUD исчезнуть и не появляться снова, даже если вы выбросите предмет.
                 if (BoM.tree.goal.progress == ProgressState.COMPLETED) {
                     BoM.tree = null;
                     return;
@@ -112,7 +106,7 @@ public class ClientHudEvents {
         if (n == null || n.ingredient.isEmpty()) return;
         EmiStack s = n.ingredient.getEmiStacks().get(0);
         if (g || (n.recipe != null && n.progress != ProgressState.COMPLETED)) {
-            long a = g ? BoM.tree.batches : n.totalNeeded;
+            long a = n.totalNeeded;
             if (a > 0) {
                 if (!m.containsKey(s)) {
                     DisplayItem it = new DisplayItem(s, a, n.progress, g, n.recipe != null, n.neededBatches);
