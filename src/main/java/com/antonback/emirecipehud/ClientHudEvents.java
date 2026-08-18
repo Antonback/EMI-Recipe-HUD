@@ -32,17 +32,30 @@ public class ClientHudEvents {
 
                 if (BoM.tree.goal.progress == ProgressState.COMPLETED) {
                     BoM.tree = null;
-                    BoM.craftingMode = false; // Выключаем режим крафта при завершении
+                    BoM.craftingMode = false;
                     return;
                 }
 
                 Map<EmiStack, DisplayItem> displayMap = new LinkedHashMap<>();
                 collectFromTree(BoM.tree.goal, displayMap, playerInv, true);
 
+                // 1. Добавляем обычное сырье
                 for (FlatMaterialCost cost : BoM.tree.cost.costs.values()) {
                     EmiStack stack = cost.ingredient.getEmiStacks().get(0);
                     if (cost.amount > 0 && !displayMap.containsKey(stack)) {
                         displayMap.put(stack, new DisplayItem(stack, cost.amount, ProgressState.UNSTARTED, false, false, 0));
+                    }
+                }
+
+                // 2. ДОБАВЛЯЕМ ШАНСОВЫЕ ПРЕДМЕТЫ (GregTech и др.)
+                for (ChanceMaterialCost cost : BoM.tree.cost.chanceCosts.values()) {
+                    EmiStack stack = cost.ingredient.getEmiStacks().get(0);
+                    long amount = cost.getEffectiveAmount();
+                    if (amount > 0 && !displayMap.containsKey(stack)) {
+                        DisplayItem item = new DisplayItem(stack, amount, ProgressState.UNSTARTED, false, false, 0);
+                        // Помечаем предмет как шансовый (для цвета)
+                        item.possibleBatches = -1;
+                        displayMap.put(stack, item);
                     }
                 }
 
@@ -77,12 +90,17 @@ public class ClientHudEvents {
                     emiContext.drawStack(item.stack, curX, curY);
 
                     int color;
-                    if (item.isGoal || item.progress == ProgressState.COMPLETED) color = 0x915900;
-                    else if (item.isIntermediate) {
-                        if (item.possibleBatches >= item.neededBatches && item.neededBatches > 0) color = 0x00918E;
-                        else if (item.possibleBatches > 0) color = 0x790091;
+                    if (item.possibleBatches == -1) {
+                        color = 0xEBA400; // Оранжево-желтый для шансовых предметов (как в EMI)
+                    } else if (item.isGoal || item.progress == ProgressState.COMPLETED) {
+                        color = 0x915900; // Оранжевый
+                    } else if (item.isIntermediate) {
+                        if (item.possibleBatches >= item.neededBatches && item.neededBatches > 0) color = 0x00918E; // Бирюзовый
+                        else if (item.possibleBatches > 0) color = 0x790091; // Фиолетовый
                         else color = 0x915900;
-                    } else color = 0x911300;
+                    } else {
+                        color = 0x911300; // Красный
+                    }
 
                     MicroTextRenderer.render(emiContext, item.amount, item.stack.getKey() instanceof Fluid, 17, curX + 17, curY + 18, color | 0xFF000000);
                     curX += 18; count++;
