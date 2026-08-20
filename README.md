@@ -5,4 +5,3 @@ EMI Recipe HUD is a small add-on for the EMI mod that displays a list of resourc
 
 [CurseForge](https://www.curseforge.com/minecraft/mc-mods/emi-recipe-hud/preview)
 
-[Modrinth](https://modrinth.com/mod/emi-recipe-hud)
