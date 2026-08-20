@@ -8,5 +8,9 @@
   "emi.config.emirecipehud.margin_right": "Отступ справа",
   "emi.config.emirecipehud.margin_bottom": "Отступ снизу",
   "emi.config.emirecipehud.h_align": "Выравнивание по горизонтали",
-  "emi.config.emirecipehud.v_align": "Выравнивание по вертикали"
+  "emi.config.emirecipehud.v_align": "Выравнивание по вертикали",
+
+  "key.categories.emirecipehud": "EMI Recipe HUD",
+  "key.emirecipehud.toggle": "Переключить видимость HUD",
+  "emi.config.emirecipehud.show_hud": "Показывать HUD"
 }

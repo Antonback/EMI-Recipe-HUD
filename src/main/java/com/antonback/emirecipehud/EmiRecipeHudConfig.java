@@ -13,14 +13,17 @@ public class EmiRecipeHudConfig {
     public static ForgeConfigSpec.IntValue MARGIN_TOP;
     public static ForgeConfigSpec.IntValue MARGIN_RIGHT;
     public static ForgeConfigSpec.IntValue MARGIN_BOTTOM;
-
     public static ForgeConfigSpec.EnumValue<Horizontal> H_ALIGN;
     public static ForgeConfigSpec.EnumValue<Vertical> V_ALIGN;
+
+    // Новый параметр для отслеживания видимости
+    public static ForgeConfigSpec.BooleanValue SHOW_HUD;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         builder.push("hud");
 
+        SHOW_HUD = builder.comment("Показывать ли HUD").define("show_hud", true);
         COLUMNS = builder.defineInRange("columns", 12, 1, 100);
         ROWS = builder.defineInRange("rows", 6, 1, 100);
 

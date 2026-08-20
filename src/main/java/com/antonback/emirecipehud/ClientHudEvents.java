@@ -22,7 +22,8 @@ public class ClientHudEvents {
         event.registerBelowAll("emi_recipe_hud", (gui, guiGraphics, partialTick, width, height) -> {
             Minecraft mc = Minecraft.getInstance();
 
-            if (mc.player == null || mc.screen != null || BoM.tree == null || BoM.tree.goal == null || !BoM.craftingMode) {
+            if (!EmiRecipeHudConfig.SHOW_HUD.get() || mc.player == null || mc.screen != null ||
+                    BoM.tree == null || BoM.tree.goal == null || !BoM.craftingMode) {
                 return;
             }
 
@@ -36,37 +37,50 @@ public class ClientHudEvents {
                     return;
                 }
 
+                // Используем LinkedHashMap для сохранения порядка "как в EMI"
                 Map<EmiStack, DisplayItem> displayMap = new LinkedHashMap<>();
-                collectFromTree(BoM.tree.goal, displayMap, playerInv, true);
 
-                // 1. Добавляем обычное сырье
+                // ГРУППА 1: ЦЕЛЬ И ПРОМЕЖУТОЧНЫЕ (Верхушка списка в EMI)
+                collectIntermediates(BoM.tree.goal, displayMap, playerInv, true);
+
+                // ГРУППА 2: ОБЫЧНОЕ СЫРЬЁ (Низ списка в EMI)
                 for (FlatMaterialCost cost : BoM.tree.cost.costs.values()) {
                     EmiStack stack = cost.ingredient.getEmiStacks().get(0);
-                    if (cost.amount > 0 && !displayMap.containsKey(stack)) {
-                        displayMap.put(stack, new DisplayItem(stack, cost.amount, ProgressState.UNSTARTED, false, false, 0));
+                    if (cost.amount > 0) {
+                        displayMap.putIfAbsent(stack, new DisplayItem(stack, cost.amount, ProgressState.UNSTARTED, false, false, 0));
                     }
                 }
 
-                // 2. ДОБАВЛЯЕМ ШАНСОВЫЕ ПРЕДМЕТЫ (GregTech и др.)
+                // ГРУППА 3: ШАНСОВОЕ СЫРЬЁ
                 for (ChanceMaterialCost cost : BoM.tree.cost.chanceCosts.values()) {
                     EmiStack stack = cost.ingredient.getEmiStacks().get(0);
                     long amount = cost.getEffectiveAmount();
                     if (amount > 0 && !displayMap.containsKey(stack)) {
                         DisplayItem item = new DisplayItem(stack, amount, ProgressState.UNSTARTED, false, false, 0);
-                        // Помечаем предмет как шансовый (для цвета)
                         item.possibleBatches = -1;
                         displayMap.put(stack, item);
                     }
                 }
 
-                List<DisplayItem> toRender = new ArrayList<>(displayMap.values());
-                if (toRender.isEmpty()) return;
+                List<DisplayItem> fullList = new ArrayList<>(displayMap.values());
+                if (fullList.isEmpty()) return;
 
+                // --- ЛОГИКА "ОКНА" В КОНЦЕ СПИСКА ---
                 int maxCols = EmiRecipeHudConfig.COLUMNS.get();
                 int maxRows = EmiRecipeHudConfig.ROWS.get();
-                int totalItems = Math.min(toRender.size(), maxCols * maxRows);
-                int cols = Math.min(totalItems, maxCols);
-                int rows = (int) Math.ceil((double) totalItems / cols);
+                int capacity = maxCols * maxRows;
+
+                List<DisplayItem> toRender;
+                if (fullList.size() > capacity) {
+                    // Берем последние N элементов (сырьё), сохраняя их относительный порядок
+                    toRender = fullList.subList(fullList.size() - capacity, fullList.size());
+                } else {
+                    toRender = fullList;
+                }
+
+                int totalToShow = toRender.size();
+                int cols = Math.min(totalToShow, maxCols);
+                int rows = (int) Math.ceil((double) totalToShow / cols);
 
                 int boxW = (cols * 18) + 10;
                 int boxH = (rows * 18) + 10;
@@ -84,23 +98,18 @@ public class ClientHudEvents {
                 emiContext.fill(startX + boxW - 1, startY, 1, boxH, 0x33ffffff);
 
                 int curX = startX + 6, curY = startY + 6, count = 0;
-                for (int i = 0; i < totalItems; i++) {
-                    DisplayItem item = toRender.get(i);
+                for (DisplayItem item : toRender) {
                     if (count >= cols) { curX = startX + 6; curY += 18; count = 0; }
                     emiContext.drawStack(item.stack, curX, curY);
 
                     int color;
-                    if (item.possibleBatches == -1) {
-                        color = 0xEBA400; // Оранжево-желтый для шансовых предметов (как в EMI)
-                    } else if (item.isGoal || item.progress == ProgressState.COMPLETED) {
-                        color = 0x915900; // Оранжевый
-                    } else if (item.isIntermediate) {
-                        if (item.possibleBatches >= item.neededBatches && item.neededBatches > 0) color = 0x00918E; // Бирюзовый
-                        else if (item.possibleBatches > 0) color = 0x790091; // Фиолетовый
+                    if (item.possibleBatches == -1) color = 0xEBA400;
+                    else if (item.isGoal || item.progress == ProgressState.COMPLETED) color = 0x915900;
+                    else if (item.isIntermediate) {
+                        if (item.possibleBatches >= item.neededBatches && item.neededBatches > 0) color = 0x00918E;
+                        else if (item.possibleBatches > 0) color = 0x790091;
                         else color = 0x915900;
-                    } else {
-                        color = 0x911300; // Красный
-                    }
+                    } else color = 0x911300;
 
                     MicroTextRenderer.render(emiContext, item.amount, item.stack.getKey() instanceof Fluid, 17, curX + 17, curY + 18, color | 0xFF000000);
                     curX += 18; count++;
@@ -121,7 +130,7 @@ public class ClientHudEvents {
         return t;
     }
 
-    private static void collectFromTree(MaterialNode n, Map<EmiStack, DisplayItem> m, EmiPlayerInventory i, boolean g) {
+    private static void collectIntermediates(MaterialNode n, Map<EmiStack, DisplayItem> m, EmiPlayerInventory i, boolean g) {
         if (n == null || n.ingredient.isEmpty()) return;
         EmiStack s = n.ingredient.getEmiStacks().get(0);
         if (g || (n.recipe != null && n.progress != ProgressState.COMPLETED)) {
@@ -131,10 +140,12 @@ public class ClientHudEvents {
                     DisplayItem it = new DisplayItem(s, a, n.progress, g, n.recipe != null, n.neededBatches);
                     if (n.recipe != null) it.possibleBatches = calculatePossibleBatches(n, i);
                     m.put(s, it);
-                } else m.get(s).amount += a;
+                } else if (g) {
+                    m.get(s).amount = a;
+                }
             }
         }
-        if (n.children != null) for (MaterialNode c : n.children) collectFromTree(c, m, i, false);
+        if (n.children != null) for (MaterialNode c : n.children) collectIntermediates(c, m, i, false);
     }
 
     private static long calculatePossibleBatches(MaterialNode n, EmiPlayerInventory inv) {
