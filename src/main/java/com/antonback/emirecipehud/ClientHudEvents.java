@@ -37,42 +37,34 @@ public class ClientHudEvents {
                     return;
                 }
 
-                // Используем LinkedHashMap для сохранения порядка "как в EMI"
                 Map<EmiStack, DisplayItem> displayMap = new LinkedHashMap<>();
 
-                // ГРУППА 1: ЦЕЛЬ И ПРОМЕЖУТОЧНЫЕ (Верхушка списка в EMI)
-                collectIntermediates(BoM.tree.goal, displayMap, playerInv, true);
+                collectFromTree(BoM.tree.goal, displayMap, playerInv, true);
 
-                // ГРУППА 2: ОБЫЧНОЕ СЫРЬЁ (Низ списка в EMI)
                 for (FlatMaterialCost cost : BoM.tree.cost.costs.values()) {
                     EmiStack stack = cost.ingredient.getEmiStacks().get(0);
                     if (cost.amount > 0) {
-                        displayMap.putIfAbsent(stack, new DisplayItem(stack, cost.amount, ProgressState.UNSTARTED, false, false, 0));
+                        addToMap(displayMap, stack, cost.amount, ProgressState.UNSTARTED, false, false, 0, 0);
                     }
                 }
 
-                // ГРУППА 3: ШАНСОВОЕ СЫРЬЁ
                 for (ChanceMaterialCost cost : BoM.tree.cost.chanceCosts.values()) {
                     EmiStack stack = cost.ingredient.getEmiStacks().get(0);
                     long amount = cost.getEffectiveAmount();
-                    if (amount > 0 && !displayMap.containsKey(stack)) {
-                        DisplayItem item = new DisplayItem(stack, amount, ProgressState.UNSTARTED, false, false, 0);
-                        item.possibleBatches = -1;
-                        displayMap.put(stack, item);
+                    if (amount > 0) {
+                        addToMap(displayMap, stack, amount, ProgressState.UNSTARTED, false, false, 0, -1);
                     }
                 }
 
                 List<DisplayItem> fullList = new ArrayList<>(displayMap.values());
                 if (fullList.isEmpty()) return;
 
-                // --- ЛОГИКА "ОКНА" В КОНЦЕ СПИСКА ---
                 int maxCols = EmiRecipeHudConfig.COLUMNS.get();
                 int maxRows = EmiRecipeHudConfig.ROWS.get();
                 int capacity = maxCols * maxRows;
 
                 List<DisplayItem> toRender;
                 if (fullList.size() > capacity) {
-                    // Берем последние N элементов (сырьё), сохраняя их относительный порядок
                     toRender = fullList.subList(fullList.size() - capacity, fullList.size());
                 } else {
                     toRender = fullList;
@@ -118,6 +110,31 @@ public class ClientHudEvents {
         });
     }
 
+    private static void addToMap(Map<EmiStack, DisplayItem> map, EmiStack stack, long amount, ProgressState progress, boolean isGoal, boolean isIntermediate, long neededBatches, long possibleBatches) {
+        EmiStack key = null;
+        for (EmiStack s : map.keySet()) {
+            if (s.isEqual(stack)) {
+                key = s;
+                break;
+            }
+        }
+
+        if (key != null) {
+            DisplayItem existing = map.get(key);
+            existing.amount += amount;
+            if (isGoal) existing.isGoal = true;
+            if (isIntermediate) existing.isIntermediate = true;
+            existing.neededBatches += neededBatches;
+            if (possibleBatches > 0) {
+                existing.possibleBatches = (existing.possibleBatches <= 0) ? possibleBatches : Math.min(existing.possibleBatches, possibleBatches);
+            }
+        } else {
+            DisplayItem item = new DisplayItem(stack, amount, progress, isGoal, isIntermediate, neededBatches);
+            item.possibleBatches = possibleBatches;
+            map.put(stack, item);
+        }
+    }
+
     private static int calculateX(EmiRecipeHudConfig.Horizontal align, int s, int b, int l, int r) {
         if (align == EmiRecipeHudConfig.Horizontal.CENTER) return (s - b) / 2;
         if (align == EmiRecipeHudConfig.Horizontal.RIGHT) return s - b - r;
@@ -130,22 +147,17 @@ public class ClientHudEvents {
         return t;
     }
 
-    private static void collectIntermediates(MaterialNode n, Map<EmiStack, DisplayItem> m, EmiPlayerInventory i, boolean g) {
+    private static void collectFromTree(MaterialNode n, Map<EmiStack, DisplayItem> m, EmiPlayerInventory i, boolean g) {
         if (n == null || n.ingredient.isEmpty()) return;
         EmiStack s = n.ingredient.getEmiStacks().get(0);
         if (g || (n.recipe != null && n.progress != ProgressState.COMPLETED)) {
             long a = n.totalNeeded;
             if (a > 0) {
-                if (!m.containsKey(s)) {
-                    DisplayItem it = new DisplayItem(s, a, n.progress, g, n.recipe != null, n.neededBatches);
-                    if (n.recipe != null) it.possibleBatches = calculatePossibleBatches(n, i);
-                    m.put(s, it);
-                } else if (g) {
-                    m.get(s).amount = a;
-                }
+                long possible = (n.recipe != null) ? calculatePossibleBatches(n, i) : 0;
+                addToMap(m, s, a, n.progress, g, n.recipe != null, n.neededBatches, possible);
             }
         }
-        if (n.children != null) for (MaterialNode c : n.children) collectIntermediates(c, m, i, false);
+        if (n.children != null) for (MaterialNode c : n.children) collectFromTree(c, m, i, false);
     }
 
     private static long calculatePossibleBatches(MaterialNode n, EmiPlayerInventory inv) {
