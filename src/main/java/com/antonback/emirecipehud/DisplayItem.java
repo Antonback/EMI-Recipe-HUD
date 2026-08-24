@@ -7,8 +7,8 @@ public class DisplayItem {
     public final EmiStack stack;
     public long amount;
     public final ProgressState progress;
-    public final boolean isGoal;
-    public final boolean isIntermediate;
+    public boolean isGoal;
+    public boolean isIntermediate;
     public long possibleBatches;
     public long neededBatches;
 
