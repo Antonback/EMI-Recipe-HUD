@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+logoFile = "icon.png"
+modId="emirecipehud"
+version="${1.5}"
+displayName="EMI Recipe HUD"
+description='''
+List of resources from the "EMI Recipe Tree" on the HUD.
+'''
+authors="Antonback"
+
+[[dependencies.${mod_id}]]
+modId="neoforge"
+type="required"
+versionRange="${neoforge_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="minecraft"
+type="required"
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="emi"
+type="required"
+versionRange="[1.1.24,)"
+ordering="AFTER"
+side="BOTH"

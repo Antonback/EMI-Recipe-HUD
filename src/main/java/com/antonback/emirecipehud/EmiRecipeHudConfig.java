@@ -1,26 +1,23 @@
 package com.antonback.emirecipehud;
 
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.config.ModConfig;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class EmiRecipeHudConfig {
-    public static final ForgeConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
 
-    public static ForgeConfigSpec.IntValue COLUMNS;
-    public static ForgeConfigSpec.IntValue ROWS;
-    public static ForgeConfigSpec.IntValue MARGIN_LEFT;
-    public static ForgeConfigSpec.IntValue MARGIN_TOP;
-    public static ForgeConfigSpec.IntValue MARGIN_RIGHT;
-    public static ForgeConfigSpec.IntValue MARGIN_BOTTOM;
-    public static ForgeConfigSpec.EnumValue<Horizontal> H_ALIGN;
-    public static ForgeConfigSpec.EnumValue<Vertical> V_ALIGN;
+    public static ModConfigSpec.IntValue COLUMNS;
+    public static ModConfigSpec.IntValue ROWS;
+    public static ModConfigSpec.IntValue MARGIN_LEFT;
+    public static ModConfigSpec.IntValue MARGIN_TOP;
+    public static ModConfigSpec.IntValue MARGIN_RIGHT;
+    public static ModConfigSpec.IntValue MARGIN_BOTTOM;
+    public static ModConfigSpec.EnumValue<Horizontal> H_ALIGN;
+    public static ModConfigSpec.EnumValue<Vertical> V_ALIGN;
 
-    // Новый параметр для отслеживания видимости
-    public static ForgeConfigSpec.BooleanValue SHOW_HUD;
+    public static ModConfigSpec.BooleanValue SHOW_HUD;
 
     static {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         builder.push("hud");
 
         SHOW_HUD = builder.comment("Показывать ли HUD").define("show_hud", true);
@@ -39,10 +36,6 @@ public class EmiRecipeHudConfig {
 
         builder.pop();
         SPEC = builder.build();
-    }
-
-    public static void register() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, SPEC);
     }
 
     public enum Horizontal { LEFT, CENTER, RIGHT }
