@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Specification-Title: emirecipehud
+Specification-Vendor: Antonback
+Specification-Version: 1
+Implementation-Title: EMI-Recipe-HUD 1.20.1
+Implementation-Version: 1.6
+Implementation-Vendor: Antonback
+Implementation-Timestamp: 2026-11-05T16:41:42+0300
+
