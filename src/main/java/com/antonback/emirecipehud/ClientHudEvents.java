@@ -22,37 +22,59 @@ public class ClientHudEvents {
         event.registerBelowAll("emi_recipe_hud", (gui, guiGraphics, partialTick, width, height) -> {
             Minecraft mc = Minecraft.getInstance();
 
-            if (!EmiRecipeHudConfig.SHOW_HUD.get() || mc.player == null || mc.screen != null ||
-                    BoM.tree == null || BoM.tree.goal == null || !BoM.craftingMode) {
+            if (!EmiRecipeHudConfig.SHOW_HUD.get() || mc.player == null || mc.screen != null) {
                 return;
             }
 
             try {
                 EmiPlayerInventory playerInv = EmiPlayerInventory.of(mc.player);
-                BoM.tree.calculateProgress(playerInv);
 
-                if (BoM.tree.goal.progress == ProgressState.COMPLETED) {
-                    BoM.tree = null;
-                    BoM.craftingMode = false;
-                    return;
-                }
+                // 1. Получаем деревья для отображения (либо список из Tree Tabs, либо стандартный BoM.tree)
+                List<MaterialTree> treesToProcess = new ArrayList<>();
 
-                Map<EmiStack, DisplayItem> displayMap = new LinkedHashMap<>();
-
-                collectFromTree(BoM.tree.goal, displayMap, playerInv, true);
-
-                for (FlatMaterialCost cost : BoM.tree.cost.costs.values()) {
-                    EmiStack stack = cost.ingredient.getEmiStacks().get(0);
-                    if (cost.amount > 0) {
-                        addToMap(displayMap, stack, cost.amount, ProgressState.UNSTARTED, false, false, 0, 0);
+                if (TreeTabsCompat.isAvailable()) {
+                    treesToProcess.addAll(TreeTabsCompat.getCraftingTrees(playerInv));
+                } else {
+                    if (BoM.tree != null && BoM.tree.goal != null && BoM.craftingMode) {
+                        BoM.tree.calculateProgress(playerInv);
+                        if (BoM.tree.goal.progress != ProgressState.COMPLETED) {
+                            treesToProcess.add(BoM.tree);
+                        } else {
+                            BoM.tree = null;
+                            BoM.craftingMode = false;
+                        }
                     }
                 }
 
-                for (ChanceMaterialCost cost : BoM.tree.cost.chanceCosts.values()) {
-                    EmiStack stack = cost.ingredient.getEmiStacks().get(0);
-                    long amount = cost.getEffectiveAmount();
-                    if (amount > 0) {
-                        addToMap(displayMap, stack, amount, ProgressState.UNSTARTED, false, false, 0, -1);
+                if (treesToProcess.isEmpty()) {
+                    return;
+                }
+
+                // 2. Суммируем ресурсы СО ВСЕХ активных деревьев в одну карту
+                Map<EmiStack, DisplayItem> displayMap = new LinkedHashMap<>();
+
+                for (MaterialTree tree : treesToProcess) {
+                    collectFromTree(tree.goal, displayMap, playerInv, true);
+
+                    if (tree.cost != null) {
+                        if (tree.cost.costs != null) {
+                            for (FlatMaterialCost cost : tree.cost.costs.values()) {
+                                if (cost.amount > 0 && !cost.ingredient.isEmpty()) {
+                                    EmiStack stack = cost.ingredient.getEmiStacks().get(0);
+                                    addToMap(displayMap, stack, cost.amount, ProgressState.UNSTARTED, false, false, 0, 0);
+                                }
+                            }
+                        }
+
+                        if (tree.cost.chanceCosts != null) {
+                            for (ChanceMaterialCost cost : tree.cost.chanceCosts.values()) {
+                                long amount = cost.getEffectiveAmount();
+                                if (amount > 0 && !cost.ingredient.isEmpty()) {
+                                    EmiStack stack = cost.ingredient.getEmiStacks().get(0);
+                                    addToMap(displayMap, stack, amount, ProgressState.UNSTARTED, false, false, 0, -1);
+                                }
+                            }
+                        }
                     }
                 }
 
