@@ -21,44 +21,63 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
-        // Регистрируем слой HUD под панелью быстрого доступа (Hotbar)
         event.registerBelow(
                 VanillaGuiLayers.HOTBAR,
                 ResourceLocation.fromNamespaceAndPath("emirecipehud", "emi_recipe_hud"),
                 (guiGraphics, deltaTracker) -> {
                     Minecraft mc = Minecraft.getInstance();
 
-                    if (!EmiRecipeHudConfig.SHOW_HUD.get() || mc.player == null || mc.screen != null ||
-                            BoM.tree == null || BoM.tree.goal == null || !BoM.craftingMode) {
+                    if (!EmiRecipeHudConfig.SHOW_HUD.get() || mc.player == null || mc.screen != null) {
                         return;
                     }
 
                     try {
                         EmiPlayerInventory playerInv = EmiPlayerInventory.of(mc.player);
-                        BoM.tree.calculateProgress(playerInv);
 
-                        if (BoM.tree.goal.progress == ProgressState.COMPLETED) {
-                            BoM.tree = null;
-                            BoM.craftingMode = false;
+                        List<MaterialTree> treesToProcess = new ArrayList<>();
+
+                        if (TreeTabsCompat.isAvailable()) {
+                            treesToProcess.addAll(TreeTabsCompat.getCraftingTrees(playerInv));
+                        } else {
+                            if (BoM.tree != null && BoM.tree.goal != null && BoM.craftingMode) {
+                                BoM.tree.calculateProgress(playerInv);
+                                if (BoM.tree.goal.progress != ProgressState.COMPLETED) {
+                                    treesToProcess.add(BoM.tree);
+                                } else {
+                                    BoM.tree = null;
+                                    BoM.craftingMode = false;
+                                }
+                            }
+                        }
+
+                        if (treesToProcess.isEmpty()) {
                             return;
                         }
 
                         Map<EmiStack, DisplayItem> displayMap = new LinkedHashMap<>();
 
-                        collectFromTree(BoM.tree.goal, displayMap, playerInv, true);
+                        for (MaterialTree tree : treesToProcess) {
+                            collectFromTree(tree.goal, displayMap, playerInv, true);
 
-                        for (FlatMaterialCost cost : BoM.tree.cost.costs.values()) {
-                            EmiStack stack = cost.ingredient.getEmiStacks().get(0);
-                            if (cost.amount > 0) {
-                                addToMap(displayMap, stack, cost.amount, ProgressState.UNSTARTED, false, false, 0, 0);
-                            }
-                        }
+                            if (tree.cost != null) {
+                                if (tree.cost.costs != null) {
+                                    for (FlatMaterialCost cost : tree.cost.costs.values()) {
+                                        if (cost.amount > 0 && !cost.ingredient.isEmpty()) {
+                                            EmiStack stack = cost.ingredient.getEmiStacks().get(0);
+                                            addToMap(displayMap, stack, cost.amount, ProgressState.UNSTARTED, false, false, 0, 0);
+                                        }
+                                    }
+                                }
 
-                        for (ChanceMaterialCost cost : BoM.tree.cost.chanceCosts.values()) {
-                            EmiStack stack = cost.ingredient.getEmiStacks().get(0);
-                            long amount = cost.getEffectiveAmount();
-                            if (amount > 0) {
-                                addToMap(displayMap, stack, amount, ProgressState.UNSTARTED, false, false, 0, -1);
+                                if (tree.cost.chanceCosts != null) {
+                                    for (ChanceMaterialCost cost : tree.cost.chanceCosts.values()) {
+                                        long amount = cost.getEffectiveAmount();
+                                        if (amount > 0 && !cost.ingredient.isEmpty()) {
+                                            EmiStack stack = cost.ingredient.getEmiStacks().get(0);
+                                            addToMap(displayMap, stack, amount, ProgressState.UNSTARTED, false, false, 0, -1);
+                                        }
+                                    }
+                                }
                             }
                         }
 

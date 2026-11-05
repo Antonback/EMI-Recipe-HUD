@@ -5,7 +5,7 @@ license="${mod_license}"
 [[mods]]
 logoFile = "icon.png"
 modId="emirecipehud"
-version="${1.5}"
+version="${1.6}"
 displayName="EMI Recipe HUD"
 description='''
 List of resources from the "EMI Recipe Tree" on the HUD.
